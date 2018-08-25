@@ -78,6 +78,7 @@ readonly COMMIT=$(echo '$Format:%H$'|grep -v Format)
 readonly CMD=$(basename -- $0)
 
 readonly MEDIAFILE_TIMESTAMP_FORMAT='%Y%m%d-%H%M'
+readonly ISO8601_TIMESTAMP_FORMAT='%Y-%m-%d'
 readonly RFC2822_TIMESTAMP_FORMAT='%a, %d %b %Y %H:%M:%S %z'
 readonly CURL_COMMON_OPTS="-A $NAME/$VERSION -L"
 readonly CURL_FEED_DELAY_OPTS="--retry 3  --retry-delay 20 --connect-timeout 40 -y30"
@@ -790,6 +791,7 @@ update_feeds() {
             [ "$enclosure_url_type" = '?' ] && enclosure_url_type=
             [ "$itemtitle" = '?' ] && itemtitle=
             [ "$guid" = '?' ] && guid=
+            datereleased=$(parse_date "${timestamp:0:8}" "$ISO8601_TIMESTAMP_FORMAT" 2>/dev/null) || datereleased=
 
             download=1
             filename=
@@ -840,6 +842,12 @@ update_feeds() {
                     mv -f "$cachedest/.download.tmp" "$cachedest/$filename"
                     echo "Saved to: $feed_dir/$filename"
                     dlcount=$((dlcount+1)); echo $dlcount > "$cachedest/.dlcount"
+
+                    # tag the downloaded file as a Podcast
+                    if [ $enclosure_url_type = audio/mpeg ]; then
+                       eyeD3 -Q --to-v2.4 -t "$itemtitle" -A "$feed_title" --release-date $datereleased "$cachedest/$filename"
+                       # eyeD3 -P itunes-podcast "$cachedest/$filename" --add 
+                    fi
                 else
                     echo "Warning: failed to download item enclosure at $enclosure_url"
                     rm -f "$cachedest/.download.tmp"
